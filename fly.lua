@@ -1,9 +1,8 @@
 -- =================================================================
--- ULTRA UNIVERSAL GAME HUB (ADVANCED AAA EDITION - COMPLETED)
--- Optimized for High-End Look, Compatibility & Performance
+-- ULTRA UNIVERSAL GAME HUB (ADVANCED AAA EDITION) - PART 1 OF 4
+-- Paste this first at the very top of your GitHub file
 -- =================================================================
 
--- 1. Ensure Game loads fully
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
@@ -21,7 +20,7 @@ end
 
 local camera = workspace.CurrentCamera
 
--- Cyberpunk Neon Palette
+-- Cyberpunk Neon Theme Colors
 local COLORS = {
 	Background = Color3.fromRGB(11, 11, 15),
 	Header = Color3.fromRGB(18, 18, 24),
@@ -61,7 +60,7 @@ mainFrame.Size = UDim2.new(0, 550, 0, 380)
 mainFrame.Position = UDim2.new(0.5, -275, 0.5, -190)
 mainFrame.BackgroundColor3 = COLORS.Background
 mainFrame.BorderSizePixel = 0
-mainFrame.ClipsDescendants = true -- Required for sliding open/close transition
+mainFrame.ClipsDescendants = true -- Required for vertical slide transition
 mainFrame.Parent = screenGui
 
 -- Rounded Corners and Glowing Cybernetic Borders
@@ -275,6 +274,10 @@ end
 
 toggleButton.MouseButton1Click:Connect(toggleMenu)
 makeDraggable(toggleButton, toggleButton)
+-- =================================================================
+-- ULTRA UNIVERSAL GAME HUB (ADVANCED AAA EDITION) - PART 2 OF 4
+-- Paste this directly below PART 1 in your GitHub file
+-- =================================================================
 
 ----------------------------------------------------
 -- MODULAR TAB CREATOR WITH ACTIVE TIPS
@@ -563,6 +566,10 @@ end
 createToggleButton(movementTab, "Flight Mode (Tilt Cam to Fly Up/Down)", false, function(state)
 	handleFlight(state)
 end)
+-- =================================================================
+-- ULTRA UNIVERSAL GAME HUB (ADVANCED AAA EDITION) - PART 3 OF 4
+-- Paste this directly below PART 2 in your GitHub file
+-- =================================================================
 
 -- ADVANCED: Hover / Bobbing Glider (Visual glide - Server Replicated)
 local hovering = false
@@ -627,4 +634,381 @@ local function handleTrail(state)
 		att1.Parent = root
 
 		local trail = Instance.new("Trail")
-		trail.Name = "DevN
+		trail.Name = "DevNeonTrail"
+		trail.Attachment0 = att0
+		trail.Attachment1 = att1
+		trail.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, COLORS.AccentCyan),
+			ColorSequenceKeypoint.new(0.5, COLORS.AccentPink),
+			ColorSequenceKeypoint.new(1, COLORS.Background)
+		})
+		trail.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(1, 1)
+		})
+		trail.Lifetime = 0.5
+		trail.LightEmission = 1
+		trail.WidthScale = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(1, 0)
+		})
+		trail.Parent = root
+	end
+end
+
+createToggleButton(movementTab, "Neon Sprint Trail (Visible to All)", false, function(state)
+	handleTrail(state)
+end)
+
+-- Infinite Jump
+local infiniteJumpEnabled = false
+local infJumpConnection = nil
+
+createToggleButton(movementTab, "Infinite Jump", false, function(state)
+	infiniteJumpEnabled = state
+	if infiniteJumpEnabled then
+		infJumpConnection = UserInputService.JumpRequest:Connect(function()
+			local char = player.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				hum:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end)
+	else
+		if infJumpConnection then
+			infJumpConnection:Disconnect()
+			infJumpConnection = nil
+		end
+	end
+end)
+
+-- No-Clip Mode
+local noclipEnabled = false
+local noclipConnection = nil
+
+createToggleButton(movementTab, "No-Clip Mode", false, function(state)
+	noclipEnabled = state
+	if noclipEnabled then
+		noclipConnection = RunService.Stepped:Connect(function()
+			local char = player.Character
+			if char then
+				for _, part in ipairs(char:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = false
+					end
+				end
+			end
+		end)
+	else
+		if noclipConnection then
+			noclipConnection:Disconnect()
+			noclipConnection = nil
+		end
+	end
+end)
+
+
+-- =================================================
+-- 2. VISUALS TAB
+-- =================================================
+local visualsTab = createTab("Visuals")
+
+-- Player Highlight (ESP)
+local espEnabled = false
+local espConnection = nil
+local activeHighlights = {}
+
+local function clearEsp()
+	for _, hl in pairs(activeHighlights) do
+		if hl then hl:Destroy() end
+	end
+	activeHighlights = {}
+end
+
+local function applyEsp()
+	clearEsp()
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p.Character then
+			local hl = Instance.new("Highlight")
+			hl.Name = "DevESP"
+			hl.FillColor = COLORS.AccentPink
+			hl.OutlineColor = COLORS.AccentCyan
+			hl.FillTransparency = 0.5
+			hl.OutlineTransparency = 0
+			hl.Adornee = p.Character
+			hl.Parent = screenGui
+			activeHighlights[p] = hl
+		end
+	end
+end
+
+createToggleButton(visualsTab, "Player ESP Glow", false, function(state)
+	espEnabled = state
+	if espEnabled then
+		applyEsp()
+		espConnection = Players.PlayerAdded:Connect(function(p)
+			p.CharacterAdded:Connect(function()
+				task.wait(1)
+				if espEnabled then applyEsp() end
+			end)
+		end)
+	else
+		if espConnection then espConnection:Disconnect() end
+		clearEsp()
+	end
+end)
+
+-- Fullbright
+local fullbright = false
+local lighting = game:GetService("Lighting")
+local origAmbient = lighting.Ambient
+local origOutdoorAmbient = lighting.OutdoorAmbient
+local origBrightness = lighting.Brightness
+
+createToggleButton(visualsTab, "Fullbright Mode", false, function(state)
+	fullbright = state
+	if fullbright then
+		lighting.Ambient = Color3.fromRGB(255, 255, 255)
+		lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+		lighting.Brightness = 2
+	else
+		lighting.Ambient = origAmbient
+		lighting.OutdoorAmbient = origOutdoorAmbient
+		lighting.Brightness = origBrightness
+	end
+end)
+
+createButton(visualsTab, "Set Day Time", function()
+	lighting.TimeOfDay = "12:00:00"
+end)
+
+createButton(visualsTab, "Set Night Time", function()
+	lighting.TimeOfDay = "00:00:00"
+end)
+
+createButton(visualsTab, "Remove Fog", function()
+	lighting.FogEnd = 999999
+end)
+
+createTextBox(visualsTab, "Set Gravity (Default: 196.2)", function(val)
+	local num = tonumber(val)
+	if num then
+		workspace.Gravity = num
+	end
+end)
+
+-- =================================================================
+-- ULTRA UNIVERSAL GAME HUB (ADVANCED AAA EDITION) - PART 4 OF 4
+-- Paste this directly below PART 3 in your GitHub file
+-- =================================================================
+
+-- =================================================
+-- 3. UTILITY TAB
+-- =================================================
+local utilityTab = createTab("Utility")
+
+createButton(utilityTab, "Give Click TP Tool", function()
+	local tool = Instance.new("Tool")
+	tool.Name = "Click TP"
+	tool.RequiresHandle = false
+	tool.Activated:Connect(function()
+		local mouse = player:GetMouse()
+		local char = player.Character
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			char.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+		end
+	end)
+	tool.Parent = player.Backpack
+end)
+
+createButton(utilityTab, "Give Dev Delete Tool (Btools)", function()
+	local tool = Instance.new("Tool")
+	tool.Name = "BTools (Delete)"
+	tool.RequiresHandle = false
+	tool.Activated:Connect(function()
+		local mouse = player:GetMouse()
+		local target = mouse.Target
+		if target and not target:IsA("Terrain") then
+			target:Destroy()
+		end
+	end)
+	tool.Parent = player.Backpack
+end)
+
+createButton(utilityTab, "Reset Character", function()
+	local char = player.Character
+	if char then
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then hum.Health = 0 end
+	end
+end)
+
+createButton(utilityTab, "Teleport to World Spawn", function()
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local spawnPoint = workspace:FindFirstChildOfClass("SpawnLocation")
+	
+	if root and spawnPoint then
+		root.CFrame = spawnPoint.CFrame + Vector3.new(0, 5, 0)
+	end
+end)
+
+
+-- =================================================
+-- 4. STATS TAB
+-- =================================================
+local statsTab = createTab("Stats")
+
+local posLabel = Instance.new("TextLabel")
+posLabel.Size = UDim2.new(0.95, 0, 0, 40)
+posLabel.BackgroundTransparency = 1
+posLabel.Text = "Position: X: 0, Y: 0, Z: 0"
+posLabel.TextColor3 = COLORS.TextMain
+posLabel.Font = Enum.Font.RobotoMono
+posLabel.TextSize = 12
+posLabel.TextXAlignment = Enum.TextXAlignment.Left
+posLabel.Parent = statsTab
+
+RunService.RenderStepped:Connect(function()
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then
+		local pos = root.Position
+		posLabel.Text = string.format("POS: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z)
+	else
+		posLabel.Text = "Character not loaded."
+	end
+end)
+
+
+-- =================================================
+-- 5. TROLL & FUN TAB
+-- =================================================
+local trollTab = createTab("Troll")
+
+-- TROLL: Big Head Mode (Client-side prank)
+local bigHeadEnabled = false
+local bigHeadConnection = nil
+local originalHeadSizes = {}
+
+local function applyBigHeads()
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p.Character then
+			local head = p.Character:FindFirstChild("Head")
+			if head and head:IsA("BasePart") then
+				if not originalHeadSizes[p] then
+					originalHeadSizes[p] = head.Size
+				end
+				head.Size = Vector3.new(4, 4, 4) -- Giant head
+				local mesh = head:FindFirstChildOfClass("SpecialMesh")
+				if mesh then
+					mesh.Scale = Vector3.new(4, 4, 4)
+				end
+			end
+		end
+	end
+end
+
+local function restoreHeads()
+	for p, size in pairs(originalHeadSizes) do
+		if p and p.Character then
+			local head = p.Character:FindFirstChild("Head")
+			if head then
+				head.Size = size
+				local mesh = head:FindFirstChildOfClass("SpecialMesh")
+				if mesh then
+					mesh.Scale = Vector3.new(1, 1, 1)
+				end
+			end
+		end
+	end
+	originalHeadSizes = {}
+end
+
+createToggleButton(trollTab, "Big Head Mode (Funny Screen)", false, function(state)
+	bigHeadEnabled = state
+	if bigHeadEnabled then
+		applyBigHeads()
+		bigHeadConnection = Players.PlayerAdded:Connect(function(p)
+			p.CharacterAdded:Connect(function()
+				task.wait(1)
+				if bigHeadEnabled then applyBigHeads() end
+			end)
+		end)
+	else
+		if bigHeadConnection then
+			bigHeadConnection:Disconnect()
+			bigHeadConnection = nil
+		end
+		restoreHeads()
+	end
+end)
+
+-- TROLL: Spinbot (Makes player spin rapidly)
+local spinning = false
+local spinConnection = nil
+
+createToggleButton(trollTab, "Spinbot Mode", false, function(state)
+	spinning = state
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	if spinning then
+		spinConnection = RunService.RenderStepped:Connect(function()
+			if root then
+				root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(45), 0) -- Rotate locally
+			end
+		end)
+	else
+		if spinConnection then
+			spinConnection:Disconnect()
+			spinConnection = nil
+		end
+	end
+end)
+
+-- TROLL: Rainbow Skin (Cycles color loop)
+local rainbowEnabled = false
+local rainbowConnection = nil
+
+createToggleButton(trollTab, "RGB Neon Rainbow Character", false, function(state)
+	rainbowEnabled = state
+	if rainbowEnabled then
+		rainbowConnection = RunService.RenderStepped:Connect(function()
+			local char = player.Character
+			if char then
+				local hue = (tick() % 4) / 4 -- Time-based hue cycle
+				local rainbowColor = Color3.fromHSV(hue, 1, 1)
+				for _, part in ipairs(char:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.Color = rainbowColor
+					end
+				end
+			end
+		end)
+	else
+		if rainbowConnection then
+			rainbowConnection:Disconnect()
+			rainbowConnection = nil
+		end
+	end
+end)
+
+----------------------------------------------------
+-- INITIALIZE AND TOGGLE LOGIC
+----------------------------------------------------
+-- Select first tab as default
+if tabs["Movement"] then
+	tabs["Movement"].Select()
+end
+
+-- Keybind to Toggle Menu Visibility (RightShift - PC backup)
+UserInputService.InputBegan:Connect(function(input, processed)
+	if not processed and input.KeyCode == Enum.KeyCode.RightShift then
+		toggleMenu()
+	end
+end)
+
+print("[Ultra Universal Game Hub]: Loaded successfully in Premium Edition.")
+
