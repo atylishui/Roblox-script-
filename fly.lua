@@ -1,66 +1,93 @@
--- Modern Fly Script (Professional Version)
+-- // SAM'S ULTIMATE HUB V1.0 // --
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
 
-local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local root = char:WaitForChild("HumanoidRootPart")
-local hum = char:WaitForChild("Humanoid")
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
 
--- Cleanup purana UI
-if CoreGui:FindFirstChild("ProFlyUI") then CoreGui:FindFirstChild("ProFlyUI"):Destroy() end
-
--- GUI Construction
+-- // UI SETUP // --
 local Screen = Instance.new("ScreenGui", CoreGui)
-Screen.Name = "ProFlyUI"
-Screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+Screen.Name = "SamsUltimateHub"
 
-local Frame = Instance.new("Frame", Screen)
-Frame.Size = UDim2.new(0, 140, 0, 50)
-Frame.Position = UDim2.new(0.5, -70, 0.5, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Frame.BorderSizePixel = 0
-Frame.Active = true
-Frame.Draggable = true -- Mobile drag support
+local MainFrame = Instance.new("Frame", Screen)
+MainFrame.Size = UDim2.new(0, 400, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+MainFrame.Active = true
+MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
-local Corner = Instance.new("UICorner", Frame)
-Corner.CornerRadius = UDim.new(0, 12)
+local Header = Instance.new("Frame", MainFrame)
+Header.Size = UDim2.new(1, 0, 0, 40)
+Header.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 10)
 
-local Toggle = Instance.new("TextButton", Frame)
-Toggle.Size = UDim2.new(1, 0, 1, 0)
-Toggle.Text = "FLY : OFF"
-Toggle.Font = Enum.Font.GothamBold
-Toggle.TextSize = 18
-Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-Toggle.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-Instance.new("UICorner", Toggle).CornerRadius = UDim.new(0, 12)
+local Title = Instance.new("TextLabel", Header)
+Title.Size = UDim2.new(1, -40, 1, 0)
+Title.Text = "SAM'S ULTIMATE HUB | 2026"
+Title.Font = Enum.Font.GothamBold
+Title.TextColor3 = Color3.new(1,1,1)
+Title.BackgroundTransparency = 1
 
--- Physics
-local bv = Instance.new("BodyVelocity", root)
-bv.MaxForce = Vector3.new(0, 0, 0)
-bv.Velocity = Vector3.new(0, 0, 0)
+-- // FEATURE LIST // --
+local Container = Instance.new("ScrollingFrame", MainFrame)
+Container.Size = UDim2.new(1, -20, 1, -60)
+Container.Position = UDim2.new(0, 10, 0, 50)
+Container.BackgroundTransparency = 1
+Container.ScrollBarThickness = 2
 
-local flying = false
+-- // LOGIC ENGINE // --
+local function CreateCategory(Name)
+    local Label = Instance.new("TextLabel", Container)
+    Label.Size = UDim2.new(1, 0, 0, 30)
+    Label.Text = "--- " .. Name .. " ---"
+    Label.TextColor3 = Color3.fromRGB(150, 150, 150)
+    Label.BackgroundTransparency = 1
+    return Label
+end
 
-Toggle.MouseButton1Click:Connect(function()
-    flying = not flying
-    if flying then
-        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        Toggle.Text = "FLY : ON"
-        Toggle.BackgroundColor3 = Color3.fromRGB(60, 255, 60)
-    else
-        bv.MaxForce = Vector3.new(0, 0, 0)
-        Toggle.Text = "FLY : OFF"
-        Toggle.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-    end
+local function CreateButton(Name, Callback)
+    local Btn = Instance.new("TextButton", Container)
+    Btn.Size = UDim2.new(1, 0, 0, 40)
+    Btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    Btn.Text = Name
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.Font = Enum.Font.Gotham
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 5)
+    Btn.MouseButton1Click:Connect(Callback)
+    return Btn
+end
+
+-- // FEATURES // --
+CreateCategory("MOVEMENT")
+
+local flyState = false
+local bv = Instance.new("BodyVelocity", Character:FindFirstChild("HumanoidRootPart"))
+bv.MaxForce = Vector3.new(0,0,0)
+
+CreateButton("Toggle Fly", function()
+    flyState = not flyState
+    bv.MaxForce = flyState and Vector3.new(math.huge, math.huge, math.huge) or Vector3.new(0,0,0)
 end)
 
--- Smoother Movement
+CreateButton("Speed Boost", function()
+    Character.Humanoid.WalkSpeed = 100
+end)
+
+CreateCategory("PLAYER")
+
+CreateButton("Infinite Jump", function()
+    UserInputService.JumpRequest:Connect(function()
+        Character.Humanoid:ChangeState("Jumping")
+    end)
+end)
+
+-- // GLOBAL LOOP // --
 RunService.RenderStepped:Connect(function()
-    if flying and char:FindFirstChild("HumanoidRootPart") then
-        local move = hum.MoveDirection
-        -- Speed yahan control kar (abhi 60 hai)
-        bv.Velocity = (move * 60) + Vector3.new(0, 1.5, 0)
+    if flyState and Character:FindFirstChild("Humanoid") then
+        bv.Velocity = (Character.Humanoid.MoveDirection * 70) + Vector3.new(0, 1.5, 0)
     end
 end)
