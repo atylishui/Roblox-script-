@@ -1,5 +1,5 @@
 -- =================================================================
--- ULTRA UNIVERSAL GAME HUB (ADVANCED AAA EDITION)
+-- ULTRA UNIVERSAL GAME HUB (ADVANCED AAA EDITION - COMPLETED)
 -- Optimized for High-End Look, Compatibility & Performance
 -- =================================================================
 
@@ -627,5 +627,4 @@ local function handleTrail(state)
 		att1.Parent = root
 
 		local trail = Instance.new("Trail")
-		trail.Name = "DevNeonTrail"
-		
+		trail.Name = "DevN
