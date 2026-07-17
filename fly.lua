@@ -43,7 +43,7 @@ uiStroke.Color = COLORS.AccentCyan
 uiStroke.Thickness = 1.5
 uiStroke.Parent = mainFrame
 
--- Glow Effect (Simulated via a faint secondary border)
+-- Glow Effect
 local glowStroke = Instance.new("UIStroke")
 glowStroke.Color = COLORS.AccentPink
 glowStroke.Thickness = 0.5
@@ -108,43 +108,92 @@ contentContainer.BackgroundTransparency = 1
 contentContainer.Parent = mainFrame
 
 ----------------------------------------------------
--- DRAGGING FUNCTIONALITY
+-- DRAGGING ENGINE (UNIVERSAL HELPER)
 ----------------------------------------------------
-local dragging, dragInput, dragStart, startPos
+local function makeDraggable(dragObject, targetFrame)
+	local dragging, dragInput, dragStart, startPos
 
-local function update(input)
-	local delta = input.Position - dragStart
-	mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	local function update(input)
+		local delta = input.Position - dragStart
+		targetFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+
+	dragObject.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = targetFrame.Position
+			
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	dragObject.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			update(input)
+		end
+	end)
 end
 
-header.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = mainFrame.Position
-		
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
-		end)
-	end
-end)
+-- Make main panel draggable by the header
+makeDraggable(header, mainFrame)
 
-header.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		dragInput = input
-	end
-end)
+----------------------------------------------------
+-- FLOATING EXTERNAL FPS HUD
+----------------------------------------------------
+local floatingHud = Instance.new("Frame")
+floatingHud.Size = UDim2.new(0, 110, 0, 35)
+floatingHud.Position = UDim2.new(0.02, 0, 0.05, 0)
+floatingHud.BackgroundColor3 = COLORS.Background
+floatingHud.BorderSizePixel = 0
+floatingHud.Parent = screenGui
 
-UserInputService.InputChanged:Connect(function(input)
-	if input == dragInput and dragging then
-		update(input)
+local hudCorner = Instance.new("UICorner")
+hudCorner.CornerRadius = UDim.new(0, 4)
+hudCorner.Parent = floatingHud
+
+local hudStroke = Instance.new("UIStroke")
+hudStroke.Color = COLORS.AccentCyan
+hudStroke.Thickness = 1
+hudStroke.Parent = floatingHud
+
+local fpsTextLabel = Instance.new("TextLabel")
+fpsTextLabel.Size = UDim2.new(1, 0, 1, 0)
+fpsTextLabel.BackgroundTransparency = 1
+fpsTextLabel.Text = "FPS: Calculating..."
+fpsTextLabel.TextColor3 = COLORS.AccentCyan
+fpsTextLabel.Font = Enum.Font.RobotoMono
+fpsTextLabel.TextSize = 13
+fpsTextLabel.Parent = floatingHud
+
+-- Make FPS Hud Draggable
+makeDraggable(floatingHud, floatingHud)
+
+-- FPS Loop calculation
+local lastUpdate = tick()
+local frameCount = 0
+RunService.RenderStepped:Connect(function()
+	frameCount = frameCount + 1
+	local now = tick()
+	if now - lastUpdate >= 1 then
+		fpsTextLabel.Text = "FPS: " .. tostring(frameCount)
+		frameCount = 0
+		lastUpdate = now
 	end
 end)
 
 ----------------------------------------------------
--- SCREEN TOGGLE BUTTON (ON/OFF)
+-- MOVABLE ON/OFF TOGGLE BUTTON
 ----------------------------------------------------
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 60, 0, 60)
@@ -158,7 +207,7 @@ toggleButton.BorderSizePixel = 0
 toggleButton.Parent = screenGui
 
 local btnCorner = Instance.new("UICorner")
-btnCorner.CornerRadius = UDim.new(1, 0) -- Circular Button
+btnCorner.CornerRadius = UDim.new(1, 0) -- Circular
 btnCorner.Parent = toggleButton
 
 local btnStroke = Instance.new("UIStroke")
@@ -166,21 +215,23 @@ btnStroke.Color = COLORS.AccentPink
 btnStroke.Thickness = 2
 btnStroke.Parent = toggleButton
 
--- Toggle button animation
+-- Toggle action
 toggleButton.MouseButton1Click:Connect(function()
 	mainFrame.Visible = not mainFrame.Visible
 	local targetColor = mainFrame.Visible and COLORS.AccentCyan or COLORS.AccentPink
 	TweenService:Create(btnStroke, TweenInfo.new(0.3), {Color = targetColor}):Play()
 end)
 
+-- Make toggle button draggable
+makeDraggable(toggleButton, toggleButton)
+
 ----------------------------------------------------
--- TAB AND FEATURE CREATION (MODULAR SYSTEM)
+-- MODULAR SYSTEM WITH STATE INDICATORS
 ----------------------------------------------------
 local tabs = {}
 local activeTab = nil
 
 local function createTab(tabName)
-	-- Create ScrollFrame for Tab Content
 	local scrollFrame = Instance.new("ScrollingFrame")
 	scrollFrame.Size = UDim2.new(1, -10, 1, -10)
 	scrollFrame.Position = UDim2.new(0, 5, 0, 5)
@@ -196,7 +247,6 @@ local function createTab(tabName)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = scrollFrame
 
-	-- Sidebar Tab Button
 	local tabButton = Instance.new("TextButton")
 	tabButton.Size = UDim2.new(0.9, 0, 0, 35)
 	tabButton.Position = UDim2.new(0.05, 0, 0, (#sidebar:GetChildren() - 1) * 40 + 10)
@@ -212,7 +262,6 @@ local function createTab(tabName)
 	sidebarBtnCorner.CornerRadius = UDim.new(0, 4)
 	sidebarBtnCorner.Parent = tabButton
 
-	-- Hover & Click effects
 	tabButton.MouseEnter:Connect(function()
 		if activeTab ~= tabName then
 			TweenService:Create(tabButton, TweenInfo.new(0.2), {TextColor3 = COLORS.AccentCyan}):Play()
@@ -246,7 +295,7 @@ local function createTab(tabName)
 	return scrollFrame
 end
 
--- Helper: Create Standard Button within a tab
+-- Standard Action Button (Run once)
 local function createButton(parentTabFrame, text, callback)
 	local button = Instance.new("TextButton")
 	button.Size = UDim2.new(0.95, 0, 0, 40)
@@ -262,27 +311,84 @@ local function createButton(parentTabFrame, text, callback)
 	elementCorner.CornerRadius = UDim.new(0, 4)
 	elementCorner.Parent = button
 
-	local btnStroke = Instance.new("UIStroke")
-	btnStroke.Color = COLORS.ButtonHover
-	btnStroke.Thickness = 1
-	btnStroke.Parent = button
+	local bStroke = Instance.new("UIStroke")
+	bStroke.Color = COLORS.ButtonHover
+	bStroke.Thickness = 1
+	bStroke.Parent = button
 
-	-- Animations
 	button.MouseEnter:Connect(function()
 		TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = COLORS.ButtonHover}):Play()
-		TweenService:Create(btnStroke, TweenInfo.new(0.15), {Color = COLORS.AccentCyan}):Play()
+		TweenService:Create(bStroke, TweenInfo.new(0.15), {Color = COLORS.AccentCyan}):Play()
 	end)
 
 	button.MouseLeave:Connect(function()
 		TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = COLORS.ButtonNormal}):Play()
-		TweenService:Create(btnStroke, TweenInfo.new(0.15), {Color = COLORS.ButtonHover}):Play()
+		TweenService:Create(bStroke, TweenInfo.new(0.15), {Color = COLORS.ButtonHover}):Play()
 	end)
 
 	button.MouseButton1Click:Connect(callback)
 	return button
 end
 
--- Helper: Create Value Slider/Input
+-- Toggle Button with Active Status (Tip Indicator [ON] / [OFF])
+local function createToggleButton(parentTabFrame, text, defaultState, callback)
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0.95, 0, 0, 40)
+	button.BackgroundColor3 = COLORS.ButtonNormal
+	button.Text = text .. " [OFF]"
+	button.TextColor3 = COLORS.TextMain
+	button.Font = Enum.Font.SourceSansSemibold
+	button.TextSize = 15
+	button.BorderSizePixel = 0
+	button.Parent = parentTabFrame
+
+	local elementCorner = Instance.new("UICorner")
+	elementCorner.CornerRadius = UDim.new(0, 4)
+	elementCorner.Parent = button
+
+	local bStroke = Instance.new("UIStroke")
+	bStroke.Color = COLORS.ButtonHover
+	bStroke.Thickness = 1
+	bStroke.Parent = button
+
+	local active = defaultState or false
+
+	local function updateVisualState()
+		if active then
+			button.Text = text .. " [ON]"
+			button.TextColor3 = COLORS.AccentCyan
+			bStroke.Color = COLORS.AccentCyan
+		else
+			button.Text = text .. " [OFF]"
+			button.TextColor3 = COLORS.TextMain
+			bStroke.Color = COLORS.ButtonHover
+		end
+	end
+
+	updateVisualState()
+
+	button.MouseButton1Click:Connect(function()
+		active = not active
+		updateVisualState()
+		callback(active)
+	end)
+
+	button.MouseEnter:Connect(function()
+		if not active then
+			TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = COLORS.ButtonHover}):Play()
+		end
+	end)
+
+	button.MouseLeave:Connect(function()
+		if not active then
+			TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = COLORS.ButtonNormal}):Play()
+		end
+	end)
+
+	return button
+end
+
+-- Input Box Helper
 local function createTextBox(parentTabFrame, placeholder, callback)
 	local textBox = Instance.new("TextBox")
 	textBox.Size = UDim2.new(0.95, 0, 0, 40)
@@ -319,7 +425,7 @@ end
 ----------------------------------------------------
 
 -- =================================================
--- 1. MOVEMENT TAB
+-- 1. MOVEMENT TAB (RE-ENGINEERED)
 -- =================================================
 local movementTab = createTab("Movement")
 
@@ -344,72 +450,72 @@ createTextBox(movementTab, "Set JumpPower (Default: 50)", function(val)
 	end
 end)
 
--- Fly Mechanic
+-- SMOOTH SYSTEM FLIGHT (Fixed & Improved CFrame Flight)
 local flying = false
-local flySpeed = 50
+local flySpeed = 60
 local flyConnection = nil
 
-local function toggleFly()
-	flying = not flying
+local function handleFlight(state)
+	flying = state
 	local char = player.Character or player.CharacterAdded:Wait()
 	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then return end
-	
-	if flying then
-		local bv = Instance.new("BodyVelocity")
-		bv.Name = "DevFlyVelocity"
-		bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-		bv.Velocity = Vector3.new(0, 0, 0)
-		bv.Parent = root
-		
-		local bg = Instance.new("BodyGyro")
-		bg.Name = "DevFlyGyro"
-		bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-		bg.CFrame = root.CFrame
-		bg.Parent = root
-		
-		flyConnection = RunService.RenderStepped:Connect(localMove)
-	else
-		if flyConnection then flyConnection:Disconnect() end
-		local bv = root:FindFirstChild("DevFlyVelocity")
-		local bg = root:FindFirstChild("DevFlyGyro")
-		if bv then bv:Destroy() end
-		if bg then bg:Destroy() end
-	end
-end
-
-function localMove()
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not root or not hum then return end
-	
-	local bv = root:FindFirstChild("DevFlyVelocity")
-	local bg = root:FindFirstChild("DevFlyGyro")
-	if not bv or not bg then return end
-	
-	local dir = hum.MoveDirection
-	local finalVelocity = dir * flySpeed
-	if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-		finalVelocity = finalVelocity + Vector3.new(0, flySpeed, 0)
-	elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-		finalVelocity = finalVelocity - Vector3.new(0, flySpeed, 0)
+
+	if flying then
+		hum.PlatformStand = true
+		flyConnection = RunService.RenderStepped:Connect(function(dt)
+			local cameraCFrame = camera.CFrame
+			local moveDirection = Vector3.new(0, 0, 0)
+
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+				moveDirection = moveDirection + cameraCFrame.LookVector
+			end
+			if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+				moveDirection = moveDirection - cameraCFrame.LookVector
+			end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+				moveDirection = moveDirection - cameraCFrame.RightVector
+			end
+			if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+				moveDirection = moveDirection + cameraCFrame.RightVector
+			end
+			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+				moveDirection = moveDirection + Vector3.new(0, 1, 0)
+			end
+			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+				moveDirection = moveDirection - Vector3.new(0, 1, 0)
+			end
+
+			if moveDirection.Magnitude > 0 then
+				moveDirection = moveDirection.Unit * flySpeed
+			else
+				moveDirection = Vector3.new(0, 0, 0)
+			end
+
+			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			root.CFrame = root.CFrame + (moveDirection * dt)
+		end)
+	else
+		if flyConnection then
+			flyConnection:Disconnect()
+			flyConnection = nil
+		end
+		hum.PlatformStand = false
+		root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 	end
-	
-	bv.Velocity = finalVelocity
-	bg.CFrame = camera.CFrame
 end
 
-createButton(movementTab, "Toggle Flight Mode", function()
-	toggleFly()
+createToggleButton(movementTab, "Flight Mode (Smooth W/A/S/D)", false, function(state)
+	handleFlight(state)
 end)
 
--- Infinite Jump Feature
+-- Infinite Jump
 local infiniteJumpEnabled = false
 local infJumpConnection = nil
 
-createButton(movementTab, "Toggle Infinite Jump", function()
-	infiniteJumpEnabled = not infiniteJumpEnabled
+createToggleButton(movementTab, "Infinite Jump", false, function(state)
+	infiniteJumpEnabled = state
 	if infiniteJumpEnabled then
 		infJumpConnection = UserInputService.JumpRequest:Connect(function()
 			local char = player.Character
@@ -426,12 +532,12 @@ createButton(movementTab, "Toggle Infinite Jump", function()
 	end
 end)
 
--- No-Clip Feature (Local Collisions)
+-- No-Clip Mode
 local noclipEnabled = false
 local noclipConnection = nil
 
-createButton(movementTab, "Toggle No-Clip (Pass Walls)", function()
-	noclipEnabled = not noclipEnabled
+createToggleButton(movementTab, "No-Clip Mode", false, function(state)
+	noclipEnabled = state
 	if noclipEnabled then
 		noclipConnection = RunService.Stepped:Connect(function()
 			local char = player.Character
@@ -451,21 +557,87 @@ createButton(movementTab, "Toggle No-Clip (Pass Walls)", function()
 	end
 end)
 
+
 -- =================================================
--- 2. VISUALS TAB
+-- 2. VISUALS TAB (WITH ESP & LIGHTING CONTROLS)
 -- =================================================
 local visualsTab = createTab("Visuals")
 
+-- Real Player ESP / Chams
+local espEnabled = false
+local espConnection = nil
+local activeHighlights = {}
+
+local function clearEsp()
+	for _, hl in pairs(activeHighlights) do
+		if hl then hl:Destroy() end
+	end
+	activeHighlights = {}
+end
+
+local function applyEsp()
+	clearEsp()
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p.Character then
+			local hl = Instance.new("Highlight")
+			hl.Name = "DevESP"
+			hl.FillColor = COLORS.AccentPink
+			hl.OutlineColor = COLORS.AccentCyan
+			hl.FillTransparency = 0.5
+			hl.OutlineTransparency = 0
+			hl.Adornee = p.Character
+			hl.Parent = screenGui
+			activeHighlights[p] = hl
+		end
+	end
+end
+
+createToggleButton(visualsTab, "Player ESP Glow", false, function(state)
+	espEnabled = state
+	if espEnabled then
+		applyEsp()
+		espConnection = Players.PlayerAdded:Connect(function(p)
+			p.CharacterAdded:Connect(function()
+				task.wait(1)
+				if espEnabled then applyEsp() end
+			end)
+		end)
+	else
+		if espConnection then espConnection:Disconnect() end
+		clearEsp()
+	end
+end)
+
+-- Fullbright System
+local fullbright = false
+local lighting = game:GetService("Lighting")
+local origAmbient = lighting.Ambient
+local origOutdoorAmbient = lighting.OutdoorAmbient
+local origBrightness = lighting.Brightness
+
+createToggleButton(visualsTab, "Fullbright Mode", false, function(state)
+	fullbright = state
+	if fullbright then
+		lighting.Ambient = Color3.fromRGB(255, 255, 255)
+		lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+		lighting.Brightness = 2
+	else
+		lighting.Ambient = origAmbient
+		lighting.OutdoorAmbient = origOutdoorAmbient
+		lighting.Brightness = origBrightness
+	end
+end)
+
 createButton(visualsTab, "Set Day Time", function()
-	game:GetService("Lighting").TimeOfDay = "12:00:00"
+	lighting.TimeOfDay = "12:00:00"
 end)
 
 createButton(visualsTab, "Set Night Time", function()
-	game:GetService("Lighting").TimeOfDay = "00:00:00"
+	lighting.TimeOfDay = "00:00:00"
 end)
 
 createButton(visualsTab, "Remove Fog", function()
-	game:GetService("Lighting").FogEnd = 999999
+	lighting.FogEnd = 999999
 end)
 
 createTextBox(visualsTab, "Set Gravity (Default: 196.2)", function(val)
@@ -475,90 +647,25 @@ createTextBox(visualsTab, "Set Gravity (Default: 196.2)", function(val)
 	end
 end)
 
+
 -- =================================================
--- 3. UTILITY TAB
+-- 3. UTILITY TAB (DEVELOPER & INTERACTIVE TOOLS)
 -- =================================================
 local utilityTab = createTab("Utility")
 
-createButton(utilityTab, "Reset Character", function()
-	local char = player.Character
-	if char then
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum then hum.Health = 0 end
-	end
+createButton(utilityTab, "Give Click TP Tool", function()
+	local tool = Instance.new("Tool")
+	tool.Name = "Click TP"
+	tool.RequiresHandle = false
+	tool.Activated:Connect(function()
+		local mouse = player:GetMouse()
+		local char = player.Character
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			char.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+		end
+	end)
+	tool.Parent = player.Backpack
 end)
 
-createButton(utilityTab, "Teleport to World Spawn", function()
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	local spawnPoint = workspace:FindFirstChildOfClass("SpawnLocation")
-	
-	if root and spawnPoint then
-		root.CFrame = spawnPoint.CFrame + Vector3.new(0, 5, 0)
-	end
-end)
-
--- =================================================
--- 4. STATS TAB (REAL-TIME ENGINE DATA)
--- =================================================
-local statsTab = createTab("Stats")
-
-local fpsLabel = Instance.new("TextLabel")
-fpsLabel.Size = UDim2.new(0.95, 0, 0, 40)
-fpsLabel.BackgroundTransparency = 1
-fpsLabel.Text = "FPS: Calculating..."
-fpsLabel.TextColor3 = COLORS.AccentCyan
-fpsLabel.Font = Enum.Font.RobotoMono
-fpsLabel.TextSize = 14
-fpsLabel.TextXAlignment = Enum.TextXAlignment.Left
-fpsLabel.Parent = statsTab
-
-local posLabel = Instance.new("TextLabel")
-posLabel.Size = UDim2.new(0.95, 0, 0, 40)
-posLabel.BackgroundTransparency = 1
-posLabel.Text = "Position: X: 0, Y: 0, Z: 0"
-posLabel.TextColor3 = COLORS.TextMain
-posLabel.Font = Enum.Font.RobotoMono
-posLabel.TextSize = 12
-posLabel.TextXAlignment = Enum.TextXAlignment.Left
-posLabel.Parent = statsTab
-
--- Real-time Engine Updates for Stats
-local lastUpdate = tick()
-local frameCount = 0
-
-RunService.RenderStepped:Connect(function()
-	frameCount = frameCount + 1
-	local now = tick()
-	if now - lastUpdate >= 1 then
-		fpsLabel.Text = "FPS: " .. tostring(frameCount)
-		frameCount = 0
-		lastUpdate = now
-	end
-	
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if root then
-		local pos = root.Position
-		posLabel.Text = string.format("POS: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z)
-	else
-		posLabel.Text = "Character not loaded."
-	end
-end)
-
-----------------------------------------------------
--- INITIALIZE AND TOGGLE LOGIC
-----------------------------------------------------
--- Default Select first tab
-if tabs["Movement"] then
-	tabs["Movement"].Select()
-end
-
--- Keybind to Toggle Menu Visibility (RightShift)
-UserInputService.InputBegan:Connect(function(input, processed)
-	if not processed and input.KeyCode == Enum.KeyCode.RightShift then
-		mainFrame.Visible = not mainFrame.Visible
-		local targetColor = mainFrame.Visible and COLORS.AccentCyan or COLORS.AccentPink
-		TweenService:Create(btnStroke, TweenInfo.new(0.3), {Color = targetColor}):Play()
-	end
-end)
+createButton(utilityTab, "Give Dev Delete Tool (Btools)", function()
+	local tool = Instance
