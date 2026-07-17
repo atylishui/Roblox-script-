@@ -1,13 +1,27 @@
--- Location: Place this script inside a LocalScript inside StarterGui
+-- =================================================================
+-- ULTRA UNIVERSAL GAME HUB (MEGA COMPATIBILITY EDITION)
+-- Built for Mobile Executors (Delta, Codex, Arceus, Solara, etc.)
+-- =================================================================
+
+-- Wait until game loads fully
+if not game:IsLoaded() then
+	game.Loaded:Wait()
+end
+
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
+while not player do
+	task.wait(0.1)
+	player = Players.LocalPlayer
+end
+
 local camera = workspace.CurrentCamera
 
--- Cyberpunk Color Palette
+-- Cyberpunk Neon Theme Colors
 local COLORS = {
 	Background = Color3.fromRGB(11, 11, 15),
 	Header = Color3.fromRGB(18, 18, 24),
@@ -23,9 +37,25 @@ local COLORS = {
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "UltraUniversalAdminHub"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Main Frame
+-- SAFE GUI PARENTING (Bypasses Game Detection on Mobile)
+local parent = nil
+local gethui = gethui or nil
+
+if gethui then
+	parent = gethui()
+else
+	local success, _ = pcall(function()
+		parent = game:GetService("CoreGui")
+	end)
+	if not success or not parent then
+		parent = player:WaitForChild("PlayerGui", 10)
+	end
+end
+
+screenGui.Parent = parent
+
+-- Main Panel Frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 550, 0, 380)
 mainFrame.Position = UDim2.new(0.5, -275, 0.5, -190)
@@ -33,7 +63,7 @@ mainFrame.BackgroundColor3 = COLORS.Background
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
 
--- UI Corner & Stroke (Cyberpunk Cybernetic Border)
+-- Rounded Corners and Glowing Cybernetic Borders
 local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 6)
 uiCorner.Parent = mainFrame
@@ -43,14 +73,13 @@ uiStroke.Color = COLORS.AccentCyan
 uiStroke.Thickness = 1.5
 uiStroke.Parent = mainFrame
 
--- Glow Effect
 local glowStroke = Instance.new("UIStroke")
 glowStroke.Color = COLORS.AccentPink
 glowStroke.Thickness = 0.5
 glowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 glowStroke.Parent = mainFrame
 
--- Title/Header Bar
+-- Title Header Bar
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 40)
 header.BackgroundColor3 = COLORS.Header
@@ -61,7 +90,6 @@ local headerCorner = Instance.new("UICorner")
 headerCorner.CornerRadius = UDim.new(0, 6)
 headerCorner.Parent = header
 
--- Title Text
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(0.6, 0, 1, 0)
 title.Position = UDim2.new(0, 15, 0, 0)
@@ -73,19 +101,18 @@ title.TextSize = 16
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = header
 
--- Toggle Key Info
 local infoText = Instance.new("TextLabel")
 infoText.Size = UDim2.new(0.35, 0, 1, 0)
 infoText.Position = UDim2.new(0.6, 0, 0, 0)
 infoText.BackgroundTransparency = 1
-infoText.Text = "[RightShift to Toggle]"
+infoText.Text = "[Drag Header or Toggle]"
 infoText.TextColor3 = COLORS.TextDark
 infoText.Font = Enum.Font.SourceSansItalic
-infoText.TextSize = 12
+infoText.TextSize = 11
 infoText.TextXAlignment = Enum.TextXAlignment.Right
 infoText.Parent = header
 
--- Sidebar (Tabs navigation)
+-- Sidebar (Tabs Area)
 local sidebar = Instance.new("Frame")
 sidebar.Size = UDim2.new(0, 140, 1, -40)
 sidebar.Position = UDim2.new(0, 0, 0, 40)
@@ -100,7 +127,7 @@ sidebarLine.BackgroundColor3 = COLORS.AccentPink
 sidebarLine.BorderSizePixel = 0
 sidebarLine.Parent = sidebar
 
--- Content Container
+-- Tab Content Window
 local contentContainer = Instance.new("Frame")
 contentContainer.Size = UDim2.new(1, -145, 1, -45)
 contentContainer.Position = UDim2.new(0, 145, 0, 45)
@@ -108,7 +135,7 @@ contentContainer.BackgroundTransparency = 1
 contentContainer.Parent = mainFrame
 
 ----------------------------------------------------
--- DRAGGING ENGINE (UNIVERSAL HELPER)
+-- DRAGGING ENGINE (For Mobile Touch & PC Mouse)
 ----------------------------------------------------
 local function makeDraggable(dragObject, targetFrame)
 	local dragging, dragInput, dragStart, startPos
@@ -145,11 +172,11 @@ local function makeDraggable(dragObject, targetFrame)
 	end)
 end
 
--- Make main panel draggable by the header
+-- Header dragging
 makeDraggable(header, mainFrame)
 
 ----------------------------------------------------
--- FLOATING EXTERNAL FPS HUD
+-- FLOATING EXTERNAL FPS HUD (Outside UI)
 ----------------------------------------------------
 local floatingHud = Instance.new("Frame")
 floatingHud.Size = UDim2.new(0, 110, 0, 35)
@@ -170,16 +197,16 @@ hudStroke.Parent = floatingHud
 local fpsTextLabel = Instance.new("TextLabel")
 fpsTextLabel.Size = UDim2.new(1, 0, 1, 0)
 fpsTextLabel.BackgroundTransparency = 1
-fpsTextLabel.Text = "FPS: Calculating..."
+fpsTextLabel.Text = "FPS: ..."
 fpsTextLabel.TextColor3 = COLORS.AccentCyan
 fpsTextLabel.Font = Enum.Font.RobotoMono
 fpsTextLabel.TextSize = 13
 fpsTextLabel.Parent = floatingHud
 
--- Make FPS Hud Draggable
+-- Make FPS box draggable
 makeDraggable(floatingHud, floatingHud)
 
--- FPS Loop calculation
+-- FPS tracking loop
 local lastUpdate = tick()
 local frameCount = 0
 RunService.RenderStepped:Connect(function()
@@ -193,7 +220,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 ----------------------------------------------------
--- MOVABLE ON/OFF TOGGLE BUTTON
+-- DRAGGABLE ON/OFF TOGGLE BUTTON
 ----------------------------------------------------
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 60, 0, 60)
@@ -207,7 +234,7 @@ toggleButton.BorderSizePixel = 0
 toggleButton.Parent = screenGui
 
 local btnCorner = Instance.new("UICorner")
-btnCorner.CornerRadius = UDim.new(1, 0) -- Circular
+btnCorner.CornerRadius = UDim.new(1, 0) -- Circle
 btnCorner.Parent = toggleButton
 
 local btnStroke = Instance.new("UIStroke")
@@ -222,11 +249,11 @@ toggleButton.MouseButton1Click:Connect(function()
 	TweenService:Create(btnStroke, TweenInfo.new(0.3), {Color = targetColor}):Play()
 end)
 
--- Make toggle button draggable
+-- Make Hub button draggable anywhere on screen
 makeDraggable(toggleButton, toggleButton)
 
 ----------------------------------------------------
--- MODULAR SYSTEM WITH STATE INDICATORS
+-- MODULAR TAB CREATOR WITH ACTIVE TIPS
 ----------------------------------------------------
 local tabs = {}
 local activeTab = nil
@@ -295,7 +322,7 @@ local function createTab(tabName)
 	return scrollFrame
 end
 
--- Standard Action Button (Run once)
+-- Helper: Standard Button
 local function createButton(parentTabFrame, text, callback)
 	local button = Instance.new("TextButton")
 	button.Size = UDim2.new(0.95, 0, 0, 40)
@@ -330,7 +357,7 @@ local function createButton(parentTabFrame, text, callback)
 	return button
 end
 
--- Toggle Button with Active Status (Tip Indicator [ON] / [OFF])
+-- Helper: Toggle Button with Dynamic [ON] / [OFF] Tips
 local function createToggleButton(parentTabFrame, text, defaultState, callback)
 	local button = Instance.new("TextButton")
 	button.Size = UDim2.new(0.95, 0, 0, 40)
@@ -388,7 +415,7 @@ local function createToggleButton(parentTabFrame, text, defaultState, callback)
 	return button
 end
 
--- Input Box Helper
+-- Helper: Input Text Box
 local function createTextBox(parentTabFrame, placeholder, callback)
 	local textBox = Instance.new("TextBox")
 	textBox.Size = UDim2.new(0.95, 0, 0, 40)
@@ -425,7 +452,7 @@ end
 ----------------------------------------------------
 
 -- =================================================
--- 1. MOVEMENT TAB (RE-ENGINEERED)
+-- 1. MOVEMENT TAB
 -- =================================================
 local movementTab = createTab("Movement")
 
@@ -450,10 +477,33 @@ createTextBox(movementTab, "Set JumpPower (Default: 50)", function(val)
 	end
 end)
 
--- SMOOTH SYSTEM FLIGHT (Fixed & Improved CFrame Flight)
+-- PC & MOBILE COMPATIBLE SMOOTH FLY ENGINE (Camera Relative)
 local flying = false
 local flySpeed = 60
 local flyConnection = nil
+
+local function getFlyDirection(hum)
+	local moveDirection = Vector3.new(0, 0, 0)
+	local cameraCFrame = camera.CFrame
+	local isPC = false
+	
+	-- Keyboard detection (PC Only)
+	if UserInputService:GetFocusedTextBox() == nil then
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + cameraCFrame.LookVector isPC = true end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - cameraCFrame.LookVector isPC = true end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - cameraCFrame.RightVector isPC = true end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + cameraCFrame.RightVector isPC = true end
+		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection = moveDirection + Vector3.new(0, 1, 0) isPC = true end
+		if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection = moveDirection - Vector3.new(0, 1, 0) isPC = true end
+	end
+	
+	-- Mobile Joystick detection (Works universally on Phone thumbsticks)
+	if not isPC and hum and hum.MoveDirection.Magnitude > 0 then
+		moveDirection = cameraCFrame.LookVector * hum.MoveDirection.Magnitude
+	end
+	
+	return moveDirection
+end
 
 local function handleFlight(state)
 	flying = state
@@ -465,27 +515,7 @@ local function handleFlight(state)
 	if flying then
 		hum.PlatformStand = true
 		flyConnection = RunService.RenderStepped:Connect(function(dt)
-			local cameraCFrame = camera.CFrame
-			local moveDirection = Vector3.new(0, 0, 0)
-
-			if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-				moveDirection = moveDirection + cameraCFrame.LookVector
-			end
-			if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-				moveDirection = moveDirection - cameraCFrame.LookVector
-			end
-			if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-				moveDirection = moveDirection - cameraCFrame.RightVector
-			end
-			if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-				moveDirection = moveDirection + cameraCFrame.RightVector
-			end
-			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-				moveDirection = moveDirection + Vector3.new(0, 1, 0)
-			end
-			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-				moveDirection = moveDirection - Vector3.new(0, 1, 0)
-			end
+			local moveDirection = getFlyDirection(hum)
 
 			if moveDirection.Magnitude > 0 then
 				moveDirection = moveDirection.Unit * flySpeed
@@ -506,7 +536,7 @@ local function handleFlight(state)
 	end
 end
 
-createToggleButton(movementTab, "Flight Mode (Smooth W/A/S/D)", false, function(state)
+createToggleButton(movementTab, "Flight Mode (Tilt Cam to Fly Up/Down)", false, function(state)
 	handleFlight(state)
 end)
 
@@ -559,11 +589,11 @@ end)
 
 
 -- =================================================
--- 2. VISUALS TAB (WITH ESP & LIGHTING CONTROLS)
+-- 2. VISUALS TAB
 -- =================================================
 local visualsTab = createTab("Visuals")
 
--- Real Player ESP / Chams
+-- Player Highlight (ESP)
 local espEnabled = false
 local espConnection = nil
 local activeHighlights = {}
@@ -608,7 +638,7 @@ createToggleButton(visualsTab, "Player ESP Glow", false, function(state)
 	end
 end)
 
--- Fullbright System
+-- Fullbright
 local fullbright = false
 local lighting = game:GetService("Lighting")
 local origAmbient = lighting.Ambient
@@ -633,39 +663,4 @@ createButton(visualsTab, "Set Day Time", function()
 end)
 
 createButton(visualsTab, "Set Night Time", function()
-	lighting.TimeOfDay = "00:00:00"
-end)
-
-createButton(visualsTab, "Remove Fog", function()
-	lighting.FogEnd = 999999
-end)
-
-createTextBox(visualsTab, "Set Gravity (Default: 196.2)", function(val)
-	local num = tonumber(val)
-	if num then
-		workspace.Gravity = num
-	end
-end)
-
-
--- =================================================
--- 3. UTILITY TAB (DEVELOPER & INTERACTIVE TOOLS)
--- =================================================
-local utilityTab = createTab("Utility")
-
-createButton(utilityTab, "Give Click TP Tool", function()
-	local tool = Instance.new("Tool")
-	tool.Name = "Click TP"
-	tool.RequiresHandle = false
-	tool.Activated:Connect(function()
-		local mouse = player:GetMouse()
-		local char = player.Character
-		if char and char:FindFirstChild("HumanoidRootPart") then
-			char.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
-		end
-	end)
-	tool.Parent = player.Backpack
-end)
-
-createButton(utilityTab, "Give Dev Delete Tool (Btools)", function()
-	local tool = Instance
+		
