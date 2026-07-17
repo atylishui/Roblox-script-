@@ -1,58 +1,66 @@
-local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local root = character:WaitForChild("HumanoidRootPart")
-local humanoid = character:WaitForChild("Humanoid")
+-- Modern Fly Script (Professional Version)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
 
--- Fly Logic
-local flying = false
-local bv = Instance.new("BodyVelocity")
-bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local root = char:WaitForChild("HumanoidRootPart")
+local hum = char:WaitForChild("Humanoid")
+
+-- Cleanup purana UI
+if CoreGui:FindFirstChild("ProFlyUI") then CoreGui:FindFirstChild("ProFlyUI"):Destroy() end
+
+-- GUI Construction
+local Screen = Instance.new("ScreenGui", CoreGui)
+Screen.Name = "ProFlyUI"
+Screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local Frame = Instance.new("Frame", Screen)
+Frame.Size = UDim2.new(0, 140, 0, 50)
+Frame.Position = UDim2.new(0.5, -70, 0.5, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true -- Mobile drag support
+
+local Corner = Instance.new("UICorner", Frame)
+Corner.CornerRadius = UDim.new(0, 12)
+
+local Toggle = Instance.new("TextButton", Frame)
+Toggle.Size = UDim2.new(1, 0, 1, 0)
+Toggle.Text = "FLY : OFF"
+Toggle.Font = Enum.Font.GothamBold
+Toggle.TextSize = 18
+Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+Toggle.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+Instance.new("UICorner", Toggle).CornerRadius = UDim.new(0, 12)
+
+-- Physics
+local bv = Instance.new("BodyVelocity", root)
+bv.MaxForce = Vector3.new(0, 0, 0)
 bv.Velocity = Vector3.new(0, 0, 0)
 
--- UI Setup (Modern Look)
-local screenGui = Instance.new("ScreenGui", player.PlayerGui)
-local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 160, 0, 80)
-frame.Position = UDim2.new(0.5, -80, 0.2, 0)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Draggable = true -- Mobile par drag kar sakega
+local flying = false
 
-local corner = Instance.new("UICorner", frame)
-corner.CornerRadius = UDim.new(0, 15)
-
-local button = Instance.new("TextButton", frame)
-button.Size = UDim2.new(0, 140, 0, 60)
-button.Position = UDim2.new(0.5, -70, 0.5, -30)
-button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-button.Text = "FLY : OFF"
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.Font = Enum.Font.GothamBold
-button.TextSize = 20
-
-local btnCorner = Instance.new("UICorner", button)
-btnCorner.CornerRadius = UDim.new(0, 10)
-
--- Click Logic
-button.MouseButton1Click:Connect(function()
+Toggle.MouseButton1Click:Connect(function()
     flying = not flying
     if flying then
-        bv.Parent = root
-        button.Text = "FLY : ON"
-        button.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        Toggle.Text = "FLY : ON"
+        Toggle.BackgroundColor3 = Color3.fromRGB(60, 255, 60)
     else
-        bv.Parent = nil
-        button.Text = "FLY : OFF"
-        button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        bv.MaxForce = Vector3.new(0, 0, 0)
+        Toggle.Text = "FLY : OFF"
+        Toggle.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
     end
 end)
 
--- Movement
-game:GetService("RunService").RenderStepped:Connect(function()
-    if flying then
-        -- Joystick movement + smooth control
-        bv.Velocity = (humanoid.MoveDirection * 60) + Vector3.new(0, 0, 0)
+-- Smoother Movement
+RunService.RenderStepped:Connect(function()
+    if flying and char:FindFirstChild("HumanoidRootPart") then
+        local move = hum.MoveDirection
+        -- Speed yahan control kar (abhi 60 hai)
+        bv.Velocity = (move * 60) + Vector3.new(0, 1.5, 0)
     end
 end)
-
