@@ -1,9 +1,9 @@
 -- =================================================================
--- ULTRA UNIVERSAL GAME HUB (MEGA COMPATIBILITY EDITION)
--- Built for Mobile Executors (Delta, Codex, Arceus, Solara, etc.)
+-- ULTRA UNIVERSAL GAME HUB (ADVANCED AAA EDITION)
+-- Optimized for High-End Look, Compatibility & Performance
 -- =================================================================
 
--- Wait until game loads fully
+-- 1. Ensure Game loads fully
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
@@ -21,7 +21,7 @@ end
 
 local camera = workspace.CurrentCamera
 
--- Cyberpunk Neon Theme Colors
+-- Cyberpunk Neon Palette
 local COLORS = {
 	Background = Color3.fromRGB(11, 11, 15),
 	Header = Color3.fromRGB(18, 18, 24),
@@ -61,6 +61,7 @@ mainFrame.Size = UDim2.new(0, 550, 0, 380)
 mainFrame.Position = UDim2.new(0.5, -275, 0.5, -190)
 mainFrame.BackgroundColor3 = COLORS.Background
 mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true -- Required for sliding open/close transition
 mainFrame.Parent = screenGui
 
 -- Rounded Corners and Glowing Cybernetic Borders
@@ -78,6 +79,19 @@ glowStroke.Color = COLORS.AccentPink
 glowStroke.Thickness = 0.5
 glowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 glowStroke.Parent = mainFrame
+
+-- ADVANCED: Pulsing Neon Border Animation
+task.spawn(function()
+	while task.wait(1) do
+		pcall(function()
+			TweenService:Create(uiStroke, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Color = COLORS.AccentPink}):Play()
+			TweenService:Create(glowStroke, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Color = COLORS.AccentCyan}):Play()
+			task.wait(1)
+			TweenService:Create(uiStroke, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Color = COLORS.AccentCyan}):Play()
+			TweenService:Create(glowStroke, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Color = COLORS.AccentPink}):Play()
+		end)
+	end
+end)
 
 -- Title Header Bar
 local header = Instance.new("Frame")
@@ -220,7 +234,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 ----------------------------------------------------
--- DRAGGABLE ON/OFF TOGGLE BUTTON
+-- DRAGGABLE ON/OFF TOGGLE BUTTON (WITH SMOOTH SLIDE)
 ----------------------------------------------------
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 60, 0, 60)
@@ -242,14 +256,24 @@ btnStroke.Color = COLORS.AccentPink
 btnStroke.Thickness = 2
 btnStroke.Parent = toggleButton
 
--- Toggle action
-toggleButton.MouseButton1Click:Connect(function()
-	mainFrame.Visible = not mainFrame.Visible
-	local targetColor = mainFrame.Visible and COLORS.AccentCyan or COLORS.AccentPink
+-- ADVANCED: Sliding opening & closing GUI transition
+local isMenuVisible = true
+local function toggleMenu()
+	isMenuVisible = not isMenuVisible
+	local targetColor = isMenuVisible and COLORS.AccentCyan or COLORS.AccentPink
 	TweenService:Create(btnStroke, TweenInfo.new(0.3), {Color = targetColor}):Play()
-end)
+	
+	if isMenuVisible then
+		mainFrame.Visible = true
+		mainFrame:TweenSize(UDim2.new(0, 550, 0, 380), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25, true)
+	else
+		mainFrame:TweenSize(UDim2.new(0, 550, 0, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.2, true, function()
+			mainFrame.Visible = false
+		end)
+	end
+end
 
--- Make Hub button draggable anywhere on screen
+toggleButton.MouseButton1Click:Connect(toggleMenu)
 makeDraggable(toggleButton, toggleButton)
 
 ----------------------------------------------------
@@ -540,127 +564,68 @@ createToggleButton(movementTab, "Flight Mode (Tilt Cam to Fly Up/Down)", false, 
 	handleFlight(state)
 end)
 
--- Infinite Jump
-local infiniteJumpEnabled = false
-local infJumpConnection = nil
+-- ADVANCED: Hover / Bobbing Glider (Visual glide - Server Replicated)
+local hovering = false
+local hoverConnection = nil
 
-createToggleButton(movementTab, "Infinite Jump", false, function(state)
-	infiniteJumpEnabled = state
-	if infiniteJumpEnabled then
-		infJumpConnection = UserInputService.JumpRequest:Connect(function()
-			local char = player.Character
-			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			if hum then
-				hum:ChangeState(Enum.HumanoidStateType.Jumping)
+local function handleHover(state)
+	hovering = state
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not hum or not root then return end
+
+	if hovering then
+		hum.HipHeight = 3.5 -- Raises the character physically off the ground
+		hoverConnection = RunService.RenderStepped:Connect(function()
+			if hum and root then
+				-- Gentle levitating bounce
+				local bob = math.sin(tick() * 4) * 0.3
+				hum.CameraOffset = Vector3.new(0, -bob, 0) -- Stops camera from shaking
 			end
 		end)
 	else
-		if infJumpConnection then
-			infJumpConnection:Disconnect()
-			infJumpConnection = nil
+		if hoverConnection then
+			hoverConnection:Disconnect()
+			hoverConnection = nil
 		end
-	end
-end)
-
--- No-Clip Mode
-local noclipEnabled = false
-local noclipConnection = nil
-
-createToggleButton(movementTab, "No-Clip Mode", false, function(state)
-	noclipEnabled = state
-	if noclipEnabled then
-		noclipConnection = RunService.Stepped:Connect(function()
-			local char = player.Character
-			if char then
-				for _, part in ipairs(char:GetDescendants()) do
-					if part:IsA("BasePart") then
-						part.CanCollide = false
-					end
-				end
-			end
-		end)
-	else
-		if noclipConnection then
-			noclipConnection:Disconnect()
-			noclipConnection = nil
-		end
-	end
-end)
-
-
--- =================================================
--- 2. VISUALS TAB
--- =================================================
-local visualsTab = createTab("Visuals")
-
--- Player Highlight (ESP)
-local espEnabled = false
-local espConnection = nil
-local activeHighlights = {}
-
-local function clearEsp()
-	for _, hl in pairs(activeHighlights) do
-		if hl then hl:Destroy() end
-	end
-	activeHighlights = {}
-end
-
-local function applyEsp()
-	clearEsp()
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= player and p.Character then
-			local hl = Instance.new("Highlight")
-			hl.Name = "DevESP"
-			hl.FillColor = COLORS.AccentPink
-			hl.OutlineColor = COLORS.AccentCyan
-			hl.FillTransparency = 0.5
-			hl.OutlineTransparency = 0
-			hl.Adornee = p.Character
-			hl.Parent = screenGui
-			activeHighlights[p] = hl
-		end
+		hum.HipHeight = 0 -- Default
+		hum.CameraOffset = Vector3.new(0, 0, 0)
 	end
 end
 
-createToggleButton(visualsTab, "Player ESP Glow", false, function(state)
-	espEnabled = state
-	if espEnabled then
-		applyEsp()
-		espConnection = Players.PlayerAdded:Connect(function(p)
-			p.CharacterAdded:Connect(function()
-				task.wait(1)
-				if espEnabled then applyEsp() end
-			end)
-		end)
-	else
-		if espConnection then espConnection:Disconnect() end
-		clearEsp()
-	end
+createToggleButton(movementTab, "Hover Mode (Floating Glide)", false, function(state)
+	handleHover(state)
 end)
 
--- Fullbright
-local fullbright = false
-local lighting = game:GetService("Lighting")
-local origAmbient = lighting.Ambient
-local origOutdoorAmbient = lighting.OutdoorAmbient
-local origBrightness = lighting.Brightness
+-- ADVANCED: Neon Lightning Trail (Visible to all other players)
+local trailEnabled = false
 
-createToggleButton(visualsTab, "Fullbright Mode", false, function(state)
-	fullbright = state
-	if fullbright then
-		lighting.Ambient = Color3.fromRGB(255, 255, 255)
-		lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-		lighting.Brightness = 2
-	else
-		lighting.Ambient = origAmbient
-		lighting.OutdoorAmbient = origOutdoorAmbient
-		lighting.Brightness = origBrightness
-	end
-end)
+local function handleTrail(state)
+	trailEnabled = state
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
 
-createButton(visualsTab, "Set Day Time", function()
-	lighting.TimeOfDay = "12:00:00"
-end)
+	-- Clean old trails first
+	local oldAtt0 = root:FindFirstChild("TrailAtt0")
+	local oldAtt1 = root:FindFirstChild("TrailAtt1")
+	local oldTrail = root:FindFirstChild("DevNeonTrail")
+	if oldAtt0 then oldAtt0:Destroy() end
+	if oldAtt1 then oldAtt1:Destroy() end
+	if oldTrail then oldTrail:Destroy() end
 
-createButton(visualsTab, "Set Night Time", function()
+	if trailEnabled then
+		local att0 = Instance.new("Attachment")
+		att0.Name = "TrailAtt0"
+		att0.Position = Vector3.new(0, 1, 0)
+		att0.Parent = root
+
+		local att1 = Instance.new("Attachment")
+		att1.Name = "TrailAtt1"
+		att1.Position = Vector3.new(0, -1, 0)
+		att1.Parent = root
+
+		local trail = Instance.new("Trail")
+		trail.Name = "DevNeonTrail"
 		
