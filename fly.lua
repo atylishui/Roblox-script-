@@ -78,7 +78,7 @@ local infoText = Instance.new("TextLabel")
 infoText.Size = UDim2.new(0.35, 0, 1, 0)
 infoText.Position = UDim2.new(0.6, 0, 0, 0)
 infoText.BackgroundTransparency = 1
-infoText.Text = "[Press RightShift to Toggle]"
+infoText.Text = "[RightShift to Toggle]"
 infoText.TextColor3 = COLORS.TextDark
 infoText.Font = Enum.Font.SourceSansItalic
 infoText.TextSize = 12
@@ -144,6 +144,36 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ----------------------------------------------------
+-- SCREEN TOGGLE BUTTON (ON/OFF)
+----------------------------------------------------
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 60, 0, 60)
+toggleButton.Position = UDim2.new(0.02, 0, 0.8, 0)
+toggleButton.BackgroundColor3 = COLORS.Background
+toggleButton.Text = "HUB"
+toggleButton.TextColor3 = COLORS.AccentCyan
+toggleButton.Font = Enum.Font.RobotoMono
+toggleButton.TextSize = 14
+toggleButton.BorderSizePixel = 0
+toggleButton.Parent = screenGui
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(1, 0) -- Circular Button
+btnCorner.Parent = toggleButton
+
+local btnStroke = Instance.new("UIStroke")
+btnStroke.Color = COLORS.AccentPink
+btnStroke.Thickness = 2
+btnStroke.Parent = toggleButton
+
+-- Toggle button animation
+toggleButton.MouseButton1Click:Connect(function()
+	mainFrame.Visible = not mainFrame.Visible
+	local targetColor = mainFrame.Visible and COLORS.AccentCyan or COLORS.AccentPink
+	TweenService:Create(btnStroke, TweenInfo.new(0.3), {Color = targetColor}):Play()
+end)
+
+----------------------------------------------------
 -- TAB AND FEATURE CREATION (MODULAR SYSTEM)
 ----------------------------------------------------
 local tabs = {}
@@ -178,9 +208,9 @@ local function createTab(tabName)
 	tabButton.BorderSizePixel = 0
 	tabButton.Parent = sidebar
 
-	local btnCorner = Instance.new("UICorner")
-	btnCorner.CornerRadius = UDim.new(0, 4)
-	btnCorner.Parent = tabButton
+	local sidebarBtnCorner = Instance.new("UICorner")
+	sidebarBtnCorner.CornerRadius = UDim.new(0, 4)
+	sidebarBtnCorner.Parent = tabButton
 
 	-- Hover & Click effects
 	tabButton.MouseEnter:Connect(function()
@@ -228,9 +258,9 @@ local function createButton(parentTabFrame, text, callback)
 	button.BorderSizePixel = 0
 	button.Parent = parentTabFrame
 
-	local btnCorner = Instance.new("UICorner")
-	btnCorner.CornerRadius = UDim.new(0, 4)
-	btnCorner.Parent = button
+	local elementCorner = Instance.new("UICorner")
+	elementCorner.CornerRadius = UDim.new(0, 4)
+	elementCorner.Parent = button
 
 	local btnStroke = Instance.new("UIStroke")
 	btnStroke.Color = COLORS.ButtonHover
@@ -288,7 +318,9 @@ end
 -- CREATING TABS & POPULATING FEATURES
 ----------------------------------------------------
 
--- 1. Movement Tab
+-- =================================================
+-- 1. MOVEMENT TAB
+-- =================================================
 local movementTab = createTab("Movement")
 
 createTextBox(movementTab, "Set Speed (Default: 16)", function(val)
@@ -312,7 +344,7 @@ createTextBox(movementTab, "Set JumpPower (Default: 50)", function(val)
 	end
 end)
 
--- Fly Mechanic (Physics override for developers to navigate their game worlds quickly)
+-- Fly Mechanic
 local flying = false
 local flySpeed = 50
 local flyConnection = nil
@@ -346,7 +378,6 @@ local function toggleFly()
 	end
 end
 
--- Fly movement loop
 function localMove()
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -358,9 +389,6 @@ function localMove()
 	if not bv or not bg then return end
 	
 	local dir = hum.MoveDirection
-	local camLook = camera.CFrame.LookVector
-	
-	-- Vertical adjustment based on camera look angle
 	local finalVelocity = dir * flySpeed
 	if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
 		finalVelocity = finalVelocity + Vector3.new(0, flySpeed, 0)
@@ -376,7 +404,56 @@ createButton(movementTab, "Toggle Flight Mode", function()
 	toggleFly()
 end)
 
--- 2. Visuals Tab
+-- Infinite Jump Feature
+local infiniteJumpEnabled = false
+local infJumpConnection = nil
+
+createButton(movementTab, "Toggle Infinite Jump", function()
+	infiniteJumpEnabled = not infiniteJumpEnabled
+	if infiniteJumpEnabled then
+		infJumpConnection = UserInputService.JumpRequest:Connect(function()
+			local char = player.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				hum:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end)
+	else
+		if infJumpConnection then
+			infJumpConnection:Disconnect()
+			infJumpConnection = nil
+		end
+	end
+end)
+
+-- No-Clip Feature (Local Collisions)
+local noclipEnabled = false
+local noclipConnection = nil
+
+createButton(movementTab, "Toggle No-Clip (Pass Walls)", function()
+	noclipEnabled = not noclipEnabled
+	if noclipEnabled then
+		noclipConnection = RunService.Stepped:Connect(function()
+			local char = player.Character
+			if char then
+				for _, part in ipairs(char:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = false
+					end
+				end
+			end
+		end)
+	else
+		if noclipConnection then
+			noclipConnection:Disconnect()
+			noclipConnection = nil
+		end
+	end
+end)
+
+-- =================================================
+-- 2. VISUALS TAB
+-- =================================================
 local visualsTab = createTab("Visuals")
 
 createButton(visualsTab, "Set Day Time", function()
@@ -391,7 +468,16 @@ createButton(visualsTab, "Remove Fog", function()
 	game:GetService("Lighting").FogEnd = 999999
 end)
 
--- 3. Utility Tab
+createTextBox(visualsTab, "Set Gravity (Default: 196.2)", function(val)
+	local num = tonumber(val)
+	if num then
+		workspace.Gravity = num
+	end
+end)
+
+-- =================================================
+-- 3. UTILITY TAB
+-- =================================================
 local utilityTab = createTab("Utility")
 
 createButton(utilityTab, "Reset Character", function()
@@ -412,6 +498,54 @@ createButton(utilityTab, "Teleport to World Spawn", function()
 	end
 end)
 
+-- =================================================
+-- 4. STATS TAB (REAL-TIME ENGINE DATA)
+-- =================================================
+local statsTab = createTab("Stats")
+
+local fpsLabel = Instance.new("TextLabel")
+fpsLabel.Size = UDim2.new(0.95, 0, 0, 40)
+fpsLabel.BackgroundTransparency = 1
+fpsLabel.Text = "FPS: Calculating..."
+fpsLabel.TextColor3 = COLORS.AccentCyan
+fpsLabel.Font = Enum.Font.RobotoMono
+fpsLabel.TextSize = 14
+fpsLabel.TextXAlignment = Enum.TextXAlignment.Left
+fpsLabel.Parent = statsTab
+
+local posLabel = Instance.new("TextLabel")
+posLabel.Size = UDim2.new(0.95, 0, 0, 40)
+posLabel.BackgroundTransparency = 1
+posLabel.Text = "Position: X: 0, Y: 0, Z: 0"
+posLabel.TextColor3 = COLORS.TextMain
+posLabel.Font = Enum.Font.RobotoMono
+posLabel.TextSize = 12
+posLabel.TextXAlignment = Enum.TextXAlignment.Left
+posLabel.Parent = statsTab
+
+-- Real-time Engine Updates for Stats
+local lastUpdate = tick()
+local frameCount = 0
+
+RunService.RenderStepped:Connect(function()
+	frameCount = frameCount + 1
+	local now = tick()
+	if now - lastUpdate >= 1 then
+		fpsLabel.Text = "FPS: " .. tostring(frameCount)
+		frameCount = 0
+		lastUpdate = now
+	end
+	
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then
+		local pos = root.Position
+		posLabel.Text = string.format("POS: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z)
+	else
+		posLabel.Text = "Character not loaded."
+	end
+end)
+
 ----------------------------------------------------
 -- INITIALIZE AND TOGGLE LOGIC
 ----------------------------------------------------
@@ -424,5 +558,7 @@ end
 UserInputService.InputBegan:Connect(function(input, processed)
 	if not processed and input.KeyCode == Enum.KeyCode.RightShift then
 		mainFrame.Visible = not mainFrame.Visible
+		local targetColor = mainFrame.Visible and COLORS.AccentCyan or COLORS.AccentPink
+		TweenService:Create(btnStroke, TweenInfo.new(0.3), {Color = targetColor}):Play()
 	end
 end)
